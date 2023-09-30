@@ -1,11 +1,14 @@
 import json
 import os
 import base64
+import ssl
+import smtplib
+from email.message import EmailMessage
 from requests import get, post
+from pprint import pprint, pformat
 
-client_id = "**"
-client_secret = "**"
-
+client_id = os.environ.get("SPOTIFYCLIENTID")
+client_secret = os.environ.get("SPOTIFYSECRETID")
 
 def get_token():
     auth_string = client_id + ":" + client_secret
@@ -33,16 +36,47 @@ def get_playlist(token, playlist_id):
 
     result = get(url, headers=headers)
     json_result = json.loads(result.content)
-#    print(json_result)
+
+    all_tracks = set()  
 
     for item in json_result['tracks']['items']:
         track = item['track']
         track_name = track['name']
         artists = ', '.join([artist['name'] for artist in track['artists']])
-        print(f"Track: {track_name} | Artists: {artists}")
+        track_info = f"Artists: {artists} | Track: {track_name}"
+        
+        all_tracks.add(track_info)  
 
+
+    all_tracks_list = list(all_tracks)
+
+    email_message = '\n'.join(all_tracks_list)
+    send_email(email_message)
+    print(email_message)
+
+def send_email(email_message):
+
+    username = os.environ.get("USERNAMEEMAIL")
+    password = os.environ.get("PASSWORD")
+    receiver = "Dandiggasmusic@gmail.com"
+
+
+    context = ssl.create_default_context()
+
+    email = EmailMessage()
+    email.set_content(email_message)
+    email["Subject"] = "NewMusicFriday"
+    email["From"] = username
+    email["To"] = receiver
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+        server.login(username, password)
+        server.send_message(email)
+
+    print("Email sent successfully")
 
 token = get_token()
-get_playlist(token, "**")
+get_playlist(token, "37i9dQZF1DX4JAvHpjipBk")
 
-print(token)
+
+
